@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,8 @@ import { Camera, ImagePlus, Loader2, RefreshCw } from "lucide-react";
 import { Category, Product, useSaveProduct } from "@/lib/products";
 import { compressImageToDataUrl, fetchOpenFoodFacts } from "@/lib/image";
 import { toast } from "sonner";
+import { DateWheel } from "@/components/DateWheel";
+import { formatDateBR } from "@/lib/expiration";
 
 type Props = {
   open: boolean;
@@ -40,15 +42,15 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
     setName(initial?.name ?? "");
     setBarcode(initial?.barcode ?? "");
     setCategoryId(initial?.category_id ?? defaultCategoryId);
-    setExpiration(initial?.expiration_date ?? "");
+    setExpiration(initial?.expiration_date ?? defaultISO());
     setQuantity(initial?.quantity != null ? String(initial.quantity) : "");
     setPhoto(initial?.photo_url ?? null);
     setNotFoundNotice(false);
 
-    // Auto lookup if new product with barcode and no name yet
     if (!initial?.id && initial?.barcode && !initial?.name) {
       lookup(initial.barcode);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial?.id]);
 
   async function lookup(code: string) {
@@ -102,141 +104,177 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md bg-surface border-border max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl">
+    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent
+        side="bottom"
+        className="h-[92vh] rounded-t-3xl border-border bg-background p-0 shadow-[0_-20px_60px_-20px_rgba(60,30,10,0.25)]"
+      >
+        {/* Grab handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="h-1.5 w-12 rounded-full bg-foreground/15" />
+        </div>
+        <SheetHeader className="px-5 pt-2 pb-3 text-left">
+          <SheetTitle className="font-display text-2xl tracking-tight">
             {initial?.id ? "Editar produto" : "Novo produto"}
-          </DialogTitle>
-        </DialogHeader>
+          </SheetTitle>
+        </SheetHeader>
 
-        <div className="space-y-4">
-          {/* Photo */}
-          <div className="flex items-center gap-4">
-            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-surface-2 border border-border">
-              {photo ? (
-                <img src={photo} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                  <Camera className="h-7 w-7" />
-                </div>
-              )}
-              {lookingUp && (
-                <div className="absolute inset-0 grid place-items-center bg-black/40">
-                  <Loader2 className="h-5 w-5 animate-spin text-accent" />
-                </div>
-              )}
-            </div>
-            <div className="flex-1 space-y-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => fileRef.current?.click()}
-              >
+        <div className="overflow-y-auto px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)]" style={{ maxHeight: "calc(92vh - 5.5rem)" }}>
+          <div className="space-y-5">
+            {/* Photo */}
+            <div className="flex items-center gap-4">
+              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-surface-2 border border-border">
                 {photo ? (
-                  <><RefreshCw className="h-4 w-4 mr-2" /> Trocar foto</>
+                  <img src={photo} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <><ImagePlus className="h-4 w-4 mr-2" /> Adicionar foto</>
+                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <Camera className="h-7 w-7" />
+                  </div>
                 )}
-              </Button>
-              {photo && (
+                {lookingUp && (
+                  <div className="absolute inset-0 grid place-items-center bg-foreground/40">
+                    <Loader2 className="h-5 w-5 animate-spin text-background" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="w-full text-muted-foreground"
-                  onClick={() => setPhoto(null)}
+                  className="w-full touch-min rounded-xl"
+                  onClick={() => fileRef.current?.click()}
                 >
-                  Remover
+                  {photo ? (
+                    <><RefreshCw className="h-4 w-4 mr-2" /> Trocar foto</>
+                  ) : (
+                    <><ImagePlus className="h-4 w-4 mr-2" /> Adicionar foto</>
+                  )}
                 </Button>
-              )}
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) onPickPhoto(f);
-                  e.target.value = "";
-                }}
-              />
+                {photo && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-muted-foreground"
+                    onClick={() => setPhoto(null)}
+                  >
+                    Remover
+                  </Button>
+                )}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) onPickPhoto(f);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
             </div>
-          </div>
 
-          {notFoundNotice && (
-            <div className="rounded-lg border border-border bg-surface-2/60 px-3 py-2 text-xs text-muted-foreground">
-              Produto não encontrado na base — preencha os dados manualmente.
-            </div>
-          )}
+            {notFoundNotice && (
+              <div className="rounded-xl border border-border bg-surface-2/60 px-3 py-2 text-xs text-muted-foreground">
+                Produto não encontrado na base — preencha os dados manualmente.
+              </div>
+            )}
 
-          <div className="space-y-1.5">
-            <Label>Nome</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Chocolate ao leite 90g" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Código de barras</Label>
-            <div className="flex gap-2">
-              <Input
-                value={barcode}
-                inputMode="numeric"
-                onChange={(e) => setBarcode(e.target.value)}
-                placeholder="Opcional"
-              />
-              {barcode && (
-                <Button type="button" variant="outline" size="icon" onClick={() => lookup(barcode)}>
-                  {lookingUp ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Validade</Label>
+              <Label>Nome</Label>
               <Input
-                type="date"
-                value={expiration}
-                onChange={(e) => setExpiration(e.target.value)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex.: Chocolate ao leite 90g"
+                className="h-12 rounded-xl"
               />
             </div>
+
             <div className="space-y-1.5">
-              <Label>Quantidade</Label>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                placeholder="—"
-              />
+              <Label>Código de barras</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={barcode}
+                  inputMode="numeric"
+                  onChange={(e) => setBarcode(e.target.value)}
+                  placeholder="Opcional"
+                  className="h-12 rounded-xl"
+                />
+                {barcode && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12 rounded-xl"
+                    onClick={() => lookup(barcode)}
+                  >
+                    {lookingUp ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label>Categoria</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            {/* Date wheel */}
+            <div className="space-y-2">
+              <div className="flex items-end justify-between">
+                <Label>Validade</Label>
+                <span className="font-display text-sm font-semibold text-primary">
+                  {expiration ? formatDateBR(expiration) : "—"}
+                </span>
+              </div>
+              <DateWheel value={expiration || undefined} onChange={setExpiration} />
+            </div>
 
-          <div className="flex gap-2 pt-2">
-            <Button variant="ghost" className="flex-1" onClick={onClose}>Cancelar</Button>
-            <Button className="flex-1" onClick={onSubmit} disabled={save.isPending}>
-              {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
-            </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Quantidade</Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="—"
+                  className="h-12 rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Categoria</Label>
+                <Select value={categoryId} onValueChange={setCategoryId}>
+                  <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 -mx-5 mt-2 flex gap-2 border-t border-border bg-background/95 px-5 py-3 backdrop-blur">
+              <Button variant="ghost" className="flex-1 h-12 rounded-xl" onClick={onClose}>Cancelar</Button>
+              <Button
+                className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground shadow-[var(--shadow-glow)] hover:bg-[var(--primary-hover)]"
+                onClick={onSubmit}
+                disabled={save.isPending}
+              >
+                {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+              </Button>
+            </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
+}
+
+function defaultISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
