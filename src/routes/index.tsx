@@ -9,7 +9,7 @@ import {
   ScanLine,
   Search,
   Settings2,
-  Sparkles,
+  X,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import {
 } from "@/lib/products";
 import { getStatus, statusMeta } from "@/lib/expiration";
 import { toast } from "sonner";
+import logoAsset from "@/assets/paulifest-logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -37,6 +38,8 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
+type ScanIntent = "add" | "search" | null;
+
 function Home() {
   const products = useProducts();
   const categories = useCategories();
@@ -44,7 +47,7 @@ function Home() {
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanIntent, setScanIntent] = useState<ScanIntent>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [formInitial, setFormInitial] = useState<Partial<Product> | null>(null);
   const [catOpen, setCatOpen] = useState(false);
@@ -72,15 +75,16 @@ function Home() {
 
   const counts = useMemo(() => {
     const list = products.data ?? [];
-    let danger = 0, soon = 0, ok = 0, warn = 0;
+    let danger = 0, critical = 0, soon = 0, warn = 0, ok = 0;
     for (const p of list) {
       const s = getStatus(p.expiration_date);
       if (s === "danger") danger++;
+      else if (s === "critical") critical++;
       else if (s === "soon") soon++;
       else if (s === "warn") warn++;
       else ok++;
     }
-    return { danger, soon, warn, ok, urgent: danger + soon };
+    return { danger, critical, soon, warn, ok, urgent: danger + critical };
   }, [products.data]);
 
   function openNew(barcode?: string) {
@@ -89,28 +93,36 @@ function Home() {
   }
 
   function handleScanned(code: string) {
-    setScannerOpen(false);
-    openNew(code);
+    const intent = scanIntent;
+    setScanIntent(null);
+    if (intent === "search") {
+      setSearch(code);
+    } else {
+      openNew(code);
+    }
   }
 
   return (
-    <div className="relative z-10 mx-auto min-h-screen w-full max-w-2xl px-4 pb-32 pt-6 sm:pt-10">
-      {/* Header */}
-      <header className="mb-6 flex items-end justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 text-xs font-medium text-accent">
-            <Sparkles className="h-3 w-3" /> Paulifest
-          </div>
-          <h1 className="mt-2 font-display text-3xl font-bold leading-none sm:text-4xl">
+    <div className="relative z-10 mx-auto min-h-screen w-full max-w-2xl px-4 pb-36 pt-[max(env(safe-area-inset-top),1rem)] sm:pt-10">
+      {/* Header with brand logo */}
+      <header className="mb-6 flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <img
+            src={logoAsset.url}
+            alt="Paulifest — Doces e Embalagens"
+            className="h-14 w-auto sm:h-16 select-none"
+            draggable={false}
+          />
+          <h1 className="mt-3 font-display text-2xl font-bold leading-none tracking-tight sm:text-3xl">
             Validade<span className="text-primary">.</span>
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
             Confeitaria, festas e doces — sempre dentro do prazo.
           </p>
         </div>
         <button
           onClick={() => setCatOpen(true)}
-          className="grid h-11 w-11 place-items-center rounded-xl border border-border bg-surface/60 text-muted-foreground transition hover:text-foreground hover:bg-surface-2"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
           aria-label="Categorias"
         >
           <Settings2 className="h-5 w-5" />
@@ -127,8 +139,8 @@ function Home() {
         />
         <StatCard
           label="Próximos"
-          value={counts.soon + counts.warn}
-          color="var(--status-soon)"
+          value={counts.critical + counts.soon + counts.warn}
+          color="var(--status-critical)"
           icon={<Clock className="h-4 w-4" />}
         />
         <StatCard
@@ -146,36 +158,55 @@ function Home() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="mb-4 flex items-center gap-3 rounded-2xl border border-destructive/40 bg-gradient-to-r from-destructive/20 to-primary/20 px-4 py-3 shadow-[var(--shadow-glow)]"
+            className="mb-4 flex items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-[color-mix(in_oklab,var(--primary)_18%,white)] to-[color-mix(in_oklab,var(--status-danger)_14%,white)] px-4 py-3 shadow-[var(--shadow-soft)]"
           >
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-destructive/25 text-destructive">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/20 text-primary">
               <AlertTriangle className="h-4 w-4" />
             </div>
             <div className="flex-1 text-sm">
-              <div className="font-display font-semibold">
+              <div className="font-display font-semibold text-foreground">
                 {counts.urgent} produto{counts.urgent === 1 ? "" : "s"} vencendo / vencido{counts.urgent === 1 ? "" : "s"}
               </div>
               <div className="text-xs text-muted-foreground">
-                Verifique os itens em vermelho e laranja abaixo.
+                Verifique os itens em destaque abaixo.
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Search */}
+      {/* Search + scanner */}
       <div className="relative mb-3">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nome ou código de barras"
-          className="h-12 rounded-2xl border-border bg-surface/70 pl-10 backdrop-blur"
+          placeholder="Buscar por nome ou código"
+          className="h-13 rounded-2xl border-border bg-surface pl-11 pr-24 text-base shadow-[var(--shadow-press)] focus-visible:ring-2 focus-visible:ring-primary"
+          style={{ height: 52 }}
         />
+        <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1">
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground transition active:scale-95 hover:text-foreground"
+              aria-label="Limpar busca"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            onClick={() => setScanIntent("search")}
+            className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground shadow-[var(--shadow-glow)] transition active:scale-95 hover:bg-[var(--primary-hover)]"
+            aria-label="Escanear código para buscar"
+          >
+            <ScanLine className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       {/* Category chips */}
-      <div className="-mx-4 mb-4 overflow-x-auto px-4">
+      <div className="-mx-4 mb-4 overflow-x-auto px-4 no-scrollbar">
         <div className="flex gap-2 pb-1">
           <CategoryChip
             label="Todos"
@@ -197,7 +228,7 @@ function Home() {
       {products.isLoading ? (
         <div className="space-y-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl bg-surface/50" />
+            <div key={i} className="h-28 animate-pulse rounded-3xl bg-surface" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
@@ -223,22 +254,27 @@ function Home() {
         </div>
       )}
 
-      {/* Floating action */}
-      <div className="fixed inset-x-0 bottom-0 z-20 pb-[max(env(safe-area-inset-bottom),1rem)]">
-        <div className="mx-auto flex max-w-2xl items-center justify-end gap-2 px-4">
+      {/* Bottom action bar */}
+      <div className="fixed inset-x-0 bottom-0 z-20 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3">
+        <div
+          className="pointer-events-none absolute inset-x-0 -top-6 h-12"
+          style={{
+            background: "linear-gradient(to top, var(--color-background) 30%, transparent)",
+          }}
+        />
+        <div className="relative mx-auto flex max-w-2xl items-center justify-end gap-2 px-4">
           <motion.button
-            whileTap={{ scale: 0.96 }}
+            whileTap={{ scale: 0.94 }}
             onClick={() => openNew()}
-            className="grid h-14 w-14 place-items-center rounded-full border border-border bg-surface/90 text-foreground backdrop-blur shadow-[var(--shadow-card)] transition hover:bg-surface-2"
+            className="grid h-14 w-14 place-items-center rounded-2xl border border-border bg-surface text-foreground shadow-[var(--shadow-card)] transition active:bg-surface-2"
             aria-label="Adicionar manualmente"
           >
             <Plus className="h-5 w-5" />
           </motion.button>
           <motion.button
             whileTap={{ scale: 0.96 }}
-            whileHover={{ y: -2 }}
-            onClick={() => setScannerOpen(true)}
-            className="group flex h-14 items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-6 font-display text-base font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition"
+            onClick={() => setScanIntent("add")}
+            className="group flex h-14 items-center gap-2 rounded-2xl bg-primary px-6 font-display text-base font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:bg-[var(--primary-hover)]"
           >
             <ScanLine className="h-5 w-5" />
             Escanear / Adicionar
@@ -247,9 +283,10 @@ function Home() {
       </div>
 
       <BarcodeScanner
-        open={scannerOpen}
-        onClose={() => setScannerOpen(false)}
+        open={scanIntent !== null}
+        onClose={() => setScanIntent(null)}
         onDetected={handleScanned}
+        title={scanIntent === "search" ? "Buscar por código" : "Escanear código de barras"}
       />
       <ProductForm
         open={formOpen}
@@ -271,11 +308,9 @@ function StatCard({
   label, value, color, icon,
 }: { label: string; value: number; color: string; icon: React.ReactNode }) {
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl border border-border bg-surface/70 p-3 backdrop-blur"
-    >
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-surface p-3 shadow-[var(--shadow-press)]">
       <div
-        className="absolute -right-4 -top-4 h-16 w-16 rounded-full blur-2xl opacity-50"
+        className="absolute -right-4 -top-4 h-16 w-16 rounded-full blur-2xl opacity-40"
         style={{ background: color }}
       />
       <div className="relative">
@@ -296,7 +331,11 @@ function CategoryChip({
   return (
     <button
       onClick={onClick}
-      className={`chip border ${active ? "chip-active border-transparent" : "border-border bg-surface/60 text-muted-foreground hover:text-foreground"}`}
+      className={`chip touch-min border transition active:scale-95 ${
+        active
+          ? "chip-active border-transparent"
+          : "border-border bg-surface text-muted-foreground hover:text-foreground"
+      }`}
     >
       {label}
     </button>
@@ -305,15 +344,18 @@ function CategoryChip({
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="mt-8 rounded-3xl border border-dashed border-border bg-surface/40 p-8 text-center">
-      <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-primary/30 to-accent/30">
-        <ScanLine className="h-6 w-6 text-accent" />
+    <div className="mt-8 rounded-3xl border border-dashed border-border bg-surface/60 p-8 text-center">
+      <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/15 text-primary">
+        <ScanLine className="h-6 w-6" />
       </div>
       <h3 className="mt-3 font-display text-lg font-semibold">Nenhum produto cadastrado</h3>
       <p className="mt-1 text-sm text-muted-foreground">
         Escaneie um código de barras ou adicione manualmente para começar.
       </p>
-      <Button className="mt-4" onClick={onAdd}>
+      <Button
+        className="mt-4 h-12 rounded-xl bg-primary text-primary-foreground hover:bg-[var(--primary-hover)]"
+        onClick={onAdd}
+      >
         <Plus className="mr-2 h-4 w-4" /> Adicionar produto
       </Button>
     </div>
