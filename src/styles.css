@@ -168,10 +168,10 @@
   to { transform: translateY(0); }
 }
 
-@utility no-scrollbar {
+.no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-@utility no-scrollbar-webkit {
-  &::-webkit-scrollbar { display: none; }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
