@@ -65,7 +65,7 @@ export function BarcodeScanner({ open, onClose, onDetected, title }: Props) {
       <DialogContent className="max-w-md p-0 overflow-hidden border-border bg-surface">
         <DialogHeader className="px-5 pt-5">
           <DialogTitle className="font-display text-xl">
-            {manualMode ? "Digitar código" : "Escanear código de barras"}
+            {manualMode ? "Digitar código" : (title ?? "Escanear código de barras")}
           </DialogTitle>
         </DialogHeader>
 
