@@ -26,7 +26,7 @@ import {
 } from "@/lib/products";
 import { getStatus, statusMeta } from "@/lib/expiration";
 import { toast } from "sonner";
-import logoAsset from "@/assets/paulifest-logo.png.asset.json";
+const LOGO_URL = "/paulifest-logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -108,11 +108,12 @@ function Home() {
       <header className="mb-6 flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <img
-            src={logoAsset.url}
+            src={LOGO_URL}
             alt="Paulifest — Doces e Embalagens"
-            className="h-14 w-auto sm:h-16 select-none"
+            className="h-12 w-auto max-w-full sm:h-14 select-none object-contain object-left"
             draggable={false}
           />
+
           <h1 className="mt-3 font-display text-2xl font-bold leading-none tracking-tight sm:text-3xl">
             Validade<span className="text-primary">.</span>
           </h1>

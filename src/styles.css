@@ -175,3 +175,23 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Barcode scanner: ensure video fills the framed container so the
+   library's scan region overlays exactly over what the camera reads. */
+.scanner-frame > div { width: 100% !important; height: 100% !important; }
+.scanner-frame video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block;
+}
+/* Restyle html5-qrcode's internal scan box to match brand */
+.scanner-frame #qr-shaded-region {
+  border-width: 36px !important;
+  border-color: rgba(0, 0, 0, 0.45) !important;
+  border-radius: 0 !important;
+  box-sizing: border-box;
+}
+.scanner-frame #qr-shaded-region > div {
+  background: #F08236 !important;
+}

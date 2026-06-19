@@ -32,7 +32,16 @@ export function BarcodeScanner({ open, onClose, onDetected, title }: Props) {
         scannerRef.current = scanner;
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 12, qrbox: { width: 260, height: 160 } },
+          {
+            fps: 12,
+            qrbox: (vw: number, vh: number) => {
+              const min = Math.min(vw, vh);
+              const w = Math.floor(min * 0.78);
+              const h = Math.floor(w * 0.62);
+              return { width: w, height: h };
+            },
+            aspectRatio: 4 / 3,
+          },
           (decoded) => {
             onDetected(decoded);
             stop();
@@ -71,11 +80,8 @@ export function BarcodeScanner({ open, onClose, onDetected, title }: Props) {
 
         {!manualMode ? (
           <div className="p-5 pt-3">
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-black">
+            <div className="scanner-frame relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-black">
               <div id={containerId} className="absolute inset-0" />
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="h-40 w-64 rounded-xl border-2 border-primary/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.4)]" />
-              </div>
             </div>
             {error && (
               <p className="mt-3 text-sm text-destructive">{error}</p>
