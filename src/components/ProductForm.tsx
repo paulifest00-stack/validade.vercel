@@ -10,12 +10,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Camera, ImagePlus, Loader2, RefreshCw } from "lucide-react";
+import { Camera, ImagePlus, Loader2, RefreshCw, Sparkles, ScanSearch } from "lucide-react";
 import { Category, Product, useSaveProduct } from "@/lib/products";
-import { compressImageToDataUrl, fetchOpenFoodFacts } from "@/lib/image";
+import { compressImageToDataUrl } from "@/lib/image";
+import { lookupByBarcode, lookupByPhoto, type LookupSource } from "@/lib/product-lookup";
 import { toast } from "sonner";
 import { DateWheel } from "@/components/DateWheel";
 import { formatDateBR } from "@/lib/expiration";
+
+const SOURCE_LABEL: Record<LookupSource, string> = {
+  cache: "Cache local",
+  openfoodfacts: "OpenFoodFacts",
+  ai_text: "IA (código)",
+  ai_vision: "IA (foto do rótulo)",
+  none: "Manual",
+};
 
 type Props = {
   open: boolean;
