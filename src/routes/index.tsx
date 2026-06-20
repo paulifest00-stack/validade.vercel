@@ -233,7 +233,7 @@ function Home() {
         </div>
       </div>
 
-      {/* Products */}
+      {/* Products — grouped by urgency */}
       {products.isLoading ? (
         <div className="space-y-3">
           {[0, 1, 2].map((i) => (
@@ -243,24 +243,17 @@ function Home() {
       ) : filtered.length === 0 ? (
         <EmptyState onAdd={() => openNew()} />
       ) : (
-        <div className="space-y-3">
-          <AnimatePresence initial={false}>
-            {filtered.map((p) => (
-              <ProductCard
-                key={p.id}
-                product={p}
-                category={p.category_id ? categoryMap.get(p.category_id) : undefined}
-                onEdit={() => { setFormInitial(p); setFormOpen(true); }}
-                onDelete={async () => {
-                  if (confirm(`Excluir "${p.name}"?`)) {
-                    await del.mutateAsync(p.id);
-                    toast.success("Produto excluído");
-                  }
-                }}
-              />
-            ))}
-          </AnimatePresence>
-        </div>
+        <GroupedList
+          items={filtered}
+          categoryMap={categoryMap}
+          onEdit={(p) => { setFormInitial(p); setFormOpen(true); }}
+          onDelete={async (p) => {
+            if (confirm(`Excluir "${p.name}"?`)) {
+              await del.mutateAsync(p.id);
+              toast.success("Produto excluído");
+            }
+          }}
+        />
       )}
 
       {/* Bottom action bar */}
