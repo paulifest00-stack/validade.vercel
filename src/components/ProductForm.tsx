@@ -206,8 +206,43 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
             </div>
 
             {notFoundNotice && (
-              <div className="rounded-xl border border-border bg-surface-2/60 px-3 py-2 text-xs text-muted-foreground">
-                Produto não encontrado na base — preencha os dados manualmente.
+              <div className="rounded-2xl border border-primary/25 bg-[color-mix(in_oklab,var(--primary)_8%,white)] p-3 text-xs">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <div className="flex-1">
+                    <div className="font-display text-sm font-semibold text-foreground">
+                      Não achei esse código nas bases.
+                    </div>
+                    <div className="mt-0.5 text-muted-foreground">
+                      {photo
+                        ? "Posso ler o rótulo da foto enviada para preencher o nome."
+                        : "Tire ou envie uma foto da embalagem que eu leio o rótulo pra você."}
+                    </div>
+                    {photo && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 h-9 rounded-lg border-primary/40 text-primary hover:bg-primary/10"
+                        onClick={() => runVisionOnPhoto(photo)}
+                        disabled={visioning}
+                      >
+                        {visioning ? (
+                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ScanSearch className="mr-2 h-3.5 w-3.5" />
+                        )}
+                        Identificar pela foto
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {source && source !== "none" && name && (
+              <div className="-mt-2 text-[11px] text-muted-foreground">
+                Identificado por <span className="font-semibold text-foreground/80">{SOURCE_LABEL[source]}</span> — confira antes de salvar.
               </div>
             )}
 
@@ -237,7 +272,8 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
                     variant="outline"
                     size="icon"
                     className="h-12 w-12 rounded-xl"
-                    onClick={() => lookup(barcode)}
+                    onClick={() => runBarcodeLookup(barcode)}
+                    disabled={lookingUp}
                   >
                     {lookingUp ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                   </Button>
