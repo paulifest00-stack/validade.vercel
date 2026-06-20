@@ -238,7 +238,8 @@ function Home() {
           <motion.button
             whileTap={{ scale: 0.94 }}
             onClick={() => openNew()}
-            className="grid h-14 w-14 place-items-center rounded-2xl border border-border bg-surface text-foreground shadow-[var(--shadow-card)] transition active:bg-surface-2"
+            className="grid h-13 w-13 place-items-center rounded-lg border border-border bg-surface text-foreground shadow-[var(--shadow-card)] transition active:bg-surface-2"
+            style={{ height: 52, width: 52 }}
             aria-label="Adicionar manualmente"
           >
             <Plus className="h-5 w-5" />
@@ -246,7 +247,8 @@ function Home() {
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => setScanIntent("add")}
-            className="group flex h-14 items-center gap-2 rounded-2xl bg-primary px-6 font-display text-base font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:bg-[var(--primary-hover)]"
+            className="group flex items-center gap-2 rounded-lg bg-primary px-5 font-display text-base font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:bg-[var(--primary-hover)]"
+            style={{ height: 52 }}
           >
             <ScanLine className="h-5 w-5" />
             Escanear / Adicionar
@@ -280,16 +282,16 @@ function StatCard({
   label, value, color, icon,
 }: { label: string; value: number; color: string; icon: React.ReactNode }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-surface p-3 shadow-[var(--shadow-press)]">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-surface px-3 py-2 shadow-[var(--shadow-press)]">
       <div
-        className="absolute -right-4 -top-4 h-16 w-16 rounded-full blur-2xl opacity-40"
+        className="absolute -right-3 -top-3 h-12 w-12 rounded-full blur-2xl opacity-40"
         style={{ background: color }}
       />
       <div className="relative">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
           <span style={{ color }}>{icon}</span> {label}
         </div>
-        <div className="mt-1 font-display text-2xl font-bold" style={{ color }}>
+        <div className="mt-0.5 font-display text-xl font-bold leading-tight" style={{ color }}>
           {value}
         </div>
       </div>
@@ -316,16 +318,16 @@ function CategoryChip({
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="mt-8 rounded-3xl border border-dashed border-border bg-surface/60 p-8 text-center">
-      <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/15 text-primary">
-        <ScanLine className="h-6 w-6" />
+    <div className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 p-6 text-center">
+      <div className="mx-auto grid h-12 w-12 place-items-center rounded-lg bg-primary/15 text-primary">
+        <ScanLine className="h-5 w-5" />
       </div>
-      <h3 className="mt-3 font-display text-lg font-semibold">Nenhum produto cadastrado</h3>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <h3 className="mt-3 font-display text-base font-semibold">Nenhum produto cadastrado</h3>
+      <p className="mt-1 text-xs text-muted-foreground">
         Escaneie um código de barras ou adicione manualmente para começar.
       </p>
       <Button
-        className="mt-4 h-12 rounded-xl bg-primary text-primary-foreground hover:bg-[var(--primary-hover)]"
+        className="mt-3 h-11 rounded-lg bg-primary text-primary-foreground hover:bg-[var(--primary-hover)]"
         onClick={onAdd}
       >
         <Plus className="mr-2 h-4 w-4" /> Adicionar produto
