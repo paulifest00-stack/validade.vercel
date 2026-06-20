@@ -14,11 +14,13 @@ import { Camera, ImagePlus, Loader2, RefreshCw, Sparkles, ScanSearch } from "luc
 import { Category, Product, useSaveProduct } from "@/lib/products";
 import { compressImageToDataUrl } from "@/lib/image";
 import { lookupByBarcode, lookupByPhoto, type LookupSource } from "@/lib/product-lookup";
+import { upsertCatalogEntry } from "@/lib/product-catalog";
 import { toast } from "sonner";
 import { DateWheel } from "@/components/DateWheel";
 import { formatDateBR } from "@/lib/expiration";
 
 const SOURCE_LABEL: Record<LookupSource, string> = {
+  catalog: "Catálogo permanente",
   cache: "Cache local",
   openfoodfacts: "OpenFoodFacts",
   ai_text: "IA (código)",
@@ -118,15 +120,23 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
     if (!expiration) return toast.error("Informe a data de validade.");
     if (!categoryId) return toast.error("Escolha uma categoria.");
 
+    const trimmedBarcode = barcode.trim() || null;
+
     await save.mutateAsync({
       id: initial?.id,
       name: name.trim(),
-      barcode: barcode.trim() || null,
+      barcode: trimmedBarcode,
       category_id: categoryId,
       expiration_date: expiration,
       quantity: quantity ? Number(quantity) : null,
       photo_url: photo,
     });
+
+    // Também faz upsert no product_catalog se houver barcode válido
+    if (trimmedBarcode && /^\d+$/.test(trimmedBarcode)) {
+      await upsertCatalogEntry(trimmedBarcode, name.trim(), photo);
+    }
+
     toast.success(initial?.id ? "Produto atualizado" : "Produto cadastrado");
     onClose();
   }

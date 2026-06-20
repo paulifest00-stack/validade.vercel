@@ -55,6 +55,23 @@ export function useSaveProduct() {
         const { error } = await supabase.from("products").insert(input as any);
         if (error) throw error;
       }
+
+      // Upsert no product_catalog se houver barcode válido
+      if (input.barcode && /^\d+$/.test(input.barcode.trim())) {
+        const { error: catalogError } = await supabase
+          .from("product_catalog")
+          .upsert(
+            {
+              barcode: input.barcode.trim(),
+              name: input.name || "",
+              photo_url: input.photo_url || null,
+            },
+            { onConflict: "barcode" },
+          );
+        if (catalogError) {
+          console.error("Erro ao atualizar product_catalog:", catalogError);
+        }
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["products"] }),
   });

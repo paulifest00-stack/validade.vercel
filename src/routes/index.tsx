@@ -5,7 +5,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  Plus,
+  FileUp,
   ScanLine,
   Search,
   Settings2,
@@ -18,6 +18,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { ProductForm } from "@/components/ProductForm";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { CategoryManager } from "@/components/CategoryManager";
+import { ImportXLSXForm } from "@/components/ImportXLSXForm";
 import {
   Product,
   useCategories,
@@ -51,6 +52,7 @@ function Home() {
   const [formOpen, setFormOpen] = useState(false);
   const [formInitial, setFormInitial] = useState<Partial<Product> | null>(null);
   const [catOpen, setCatOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const categoryMap = useMemo(
     () => new Map((categories.data ?? []).map((c) => [c.id, c])),
@@ -112,13 +114,22 @@ function Home() {
           className="h-9 w-auto max-w-[60%] select-none object-contain object-left"
           draggable={false}
         />
-        <button
-          onClick={() => setCatOpen(true)}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
-          aria-label="Categorias"
-        >
-          <Settings2 className="h-4.5 w-4.5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setImportOpen(true)}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
+            aria-label="Importar XLSX"
+          >
+            <FileUp className="h-4.5 w-4.5" />
+          </button>
+          <button
+            onClick={() => setCatOpen(true)}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
+            aria-label="Categorias"
+          >
+            <Settings2 className="h-4.5 w-4.5" />
+          </button>
+        </div>
       </header>
 
       {/* Compact stat row */}
@@ -236,15 +247,6 @@ function Home() {
       <div className="fixed inset-x-0 bottom-0 z-20 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-3">
         <div className="relative mx-auto flex max-w-2xl items-center justify-end gap-2 px-4">
           <motion.button
-            whileTap={{ scale: 0.94 }}
-            onClick={() => openNew()}
-            className="grid h-13 w-13 place-items-center rounded-lg border border-border bg-surface text-foreground shadow-[var(--shadow-card)] transition active:bg-surface-2"
-            style={{ height: 52, width: 52 }}
-            aria-label="Adicionar manualmente"
-          >
-            <Plus className="h-5 w-5" />
-          </motion.button>
-          <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => setScanIntent("add")}
             className="group flex items-center gap-2 rounded-lg bg-primary px-5 font-display text-base font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition hover:bg-[var(--primary-hover)]"
@@ -273,6 +275,11 @@ function Home() {
         open={catOpen}
         onClose={() => setCatOpen(false)}
         categories={categories.data ?? []}
+      />
+      <ImportXLSXForm
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        defaultCategoryId={geralId || ""}
       />
     </div>
   );
@@ -330,7 +337,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         className="mt-3 h-11 rounded-lg bg-primary text-primary-foreground hover:bg-[var(--primary-hover)]"
         onClick={onAdd}
       >
-        <Plus className="mr-2 h-4 w-4" /> Adicionar produto
+        Adicionar produto
       </Button>
     </div>
   );

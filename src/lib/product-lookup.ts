@@ -1,10 +1,12 @@
 // Orquestrador da cascata de lookup de produtos (client-side).
-// Ordem: cache (Supabase) → OpenFoodFacts → IA texto (EAN) → IA visão (foto).
+// Ordem: product_catalog → cache (Supabase) → OpenFoodFacts → IA texto (EAN) → IA visão (foto).
 import { supabase } from "@/integrations/supabase/client";
 import { compressImageToDataUrl, fetchOpenFoodFacts } from "@/lib/image";
 import { aiLookupByBarcode, aiVisionReadLabel } from "@/lib/ai-lookup.functions";
+import { lookupInCatalog } from "@/lib/product-catalog";
 
 export type LookupSource =
+  | "catalog"
   | "cache"
   | "openfoodfacts"
   | "ai_text"
@@ -22,7 +24,21 @@ export async function lookupByBarcode(barcode: string): Promise<LookupResult> {
   const code = barcode.trim();
   if (!code) return { name: null, imageDataUrl: null, source: "none" };
 
-  // 1) Cache local (já cadastrado)
+  // 1) Product catalog (memória permanente)
+  try {
+    const catalogEntry = await lookupInCatalog(code);
+    if (catalogEntry?.name) {
+      let img: string | null = null;
+      if (catalogEntry.photo_url) {
+        img = catalogEntry.photo_url;
+      }
+      return { name: catalogEntry.name, imageDataUrl: img, source: "catalog" };
+    }
+  } catch {
+    /* ignore catalog failure */
+  }
+
+  // 2) Cache local (já cadastrado)
   try {
     const { data } = await supabase
       .from("products")
@@ -37,7 +53,7 @@ export async function lookupByBarcode(barcode: string): Promise<LookupResult> {
     /* ignore cache failure */
   }
 
-  // 2) OpenFoodFacts (gratuito, sem chave)
+  // 3) OpenFoodFacts (gratuito, sem chave)
   try {
     const off = await fetchOpenFoodFacts(code);
     if (off.found && off.name) {
@@ -55,7 +71,7 @@ export async function lookupByBarcode(barcode: string): Promise<LookupResult> {
     /* next */
   }
 
-  // 3) IA por código (Gemini)
+  // 4) IA por código (Gemini)
   try {
     const ai = await aiLookupByBarcode({ data: { barcode: code } });
     if (ai?.name) {
