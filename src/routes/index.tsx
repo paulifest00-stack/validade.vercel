@@ -130,7 +130,15 @@ function Home() {
         </button>
       </header>
 
-      {/* Summary */}
+      {/* Dashboard hero: circular gauge + summary */}
+      <DashboardHero
+        total={(products.data ?? []).length}
+        ok={counts.ok}
+        urgent={counts.urgent}
+        soonish={counts.soon + counts.warn}
+      />
+
+      {/* Status cards */}
       <section className="mb-4 grid grid-cols-3 gap-2">
         <StatCard
           label="Vencidos"
@@ -225,7 +233,7 @@ function Home() {
         </div>
       </div>
 
-      {/* Products */}
+      {/* Products — grouped by urgency */}
       {products.isLoading ? (
         <div className="space-y-3">
           {[0, 1, 2].map((i) => (
@@ -235,24 +243,17 @@ function Home() {
       ) : filtered.length === 0 ? (
         <EmptyState onAdd={() => openNew()} />
       ) : (
-        <div className="space-y-3">
-          <AnimatePresence initial={false}>
-            {filtered.map((p) => (
-              <ProductCard
-                key={p.id}
-                product={p}
-                category={p.category_id ? categoryMap.get(p.category_id) : undefined}
-                onEdit={() => { setFormInitial(p); setFormOpen(true); }}
-                onDelete={async () => {
-                  if (confirm(`Excluir "${p.name}"?`)) {
-                    await del.mutateAsync(p.id);
-                    toast.success("Produto excluído");
-                  }
-                }}
-              />
-            ))}
-          </AnimatePresence>
-        </div>
+        <GroupedList
+          items={filtered}
+          categoryMap={categoryMap}
+          onEdit={(p) => { setFormInitial(p); setFormOpen(true); }}
+          onDelete={async (p) => {
+            if (confirm(`Excluir "${p.name}"?`)) {
+              await del.mutateAsync(p.id);
+              toast.success("Produto excluído");
+            }
+          }}
+        />
       )}
 
       {/* Bottom action bar */}
@@ -353,6 +354,122 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       >
         <Plus className="mr-2 h-4 w-4" /> Adicionar produto
       </Button>
+    </div>
+  );
+}
+
+function DashboardHero({
+  total, ok, urgent, soonish,
+}: { total: number; ok: number; urgent: number; soonish: number }) {
+  const pct = total === 0 ? 0 : Math.round((ok / total) * 100);
+  const size = 116;
+  const stroke = 12;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const dash = (pct / 100) * c;
+  return (
+    <section className="mb-4 overflow-hidden rounded-3xl border border-border bg-surface p-4 shadow-[var(--shadow-card)]">
+      <div className="flex items-center gap-4">
+        <div className="relative shrink-0" style={{ width: size, height: size }}>
+          <svg width={size} height={size} className="-rotate-90">
+            <circle
+              cx={size / 2} cy={size / 2} r={r}
+              stroke="color-mix(in oklab, var(--status-ok) 14%, transparent)"
+              strokeWidth={stroke} fill="none"
+            />
+            <circle
+              cx={size / 2} cy={size / 2} r={r}
+              stroke="var(--status-ok)"
+              strokeWidth={stroke} fill="none"
+              strokeLinecap="round"
+              strokeDasharray={`${dash} ${c - dash}`}
+              style={{ transition: "stroke-dasharray 600ms cubic-bezier(.2,.7,.2,1)" }}
+            />
+          </svg>
+          <div className="pointer-events-none absolute inset-0 grid place-items-center">
+            <div className="text-center leading-none">
+              <div className="font-display text-2xl font-bold text-foreground">{pct}%</div>
+              <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">em dia</div>
+            </div>
+          </div>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-display text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Estoque monitorado
+          </div>
+          <div className="mt-0.5 font-display text-3xl font-bold leading-none text-foreground">
+            {total}
+            <span className="ml-1 text-sm font-medium text-muted-foreground">
+              {total === 1 ? "item" : "itens"}
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full" style={{ background: "var(--status-danger)" }} />
+              <span className="font-semibold" style={{ color: "var(--status-danger)" }}>{urgent}</span>
+              <span className="text-muted-foreground">pedem atenção</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full" style={{ background: "var(--status-soon)" }} />
+              <span className="font-semibold" style={{ color: "var(--status-soon)" }}>{soonish}</span>
+              <span className="text-muted-foreground">em breve</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function GroupedList({
+  items, categoryMap, onEdit, onDelete,
+}: {
+  items: Product[];
+  categoryMap: Map<string, { id: string; name: string; created_at: string }>;
+  onEdit: (p: Product) => void;
+  onDelete: (p: Product) => void;
+}) {
+  const urgent: Product[] = [];
+  const soon: Product[] = [];
+  const okList: Product[] = [];
+  for (const p of items) {
+    const s = getStatus(p.expiration_date);
+    if (s === "danger" || s === "critical") urgent.push(p);
+    else if (s === "soon" || s === "warn") soon.push(p);
+    else okList.push(p);
+  }
+  const groups: Array<{ key: string; title: string; tone: string; list: Product[] }> = [];
+  if (urgent.length) groups.push({ key: "u", title: "Resolver agora", tone: "var(--status-danger)", list: urgent });
+  if (soon.length) groups.push({ key: "s", title: "Vence em breve", tone: "var(--status-soon)", list: soon });
+  if (okList.length) groups.push({ key: "o", title: "Em dia", tone: "var(--status-ok)", list: okList });
+
+  return (
+    <div className="space-y-5">
+      <AnimatePresence initial={false}>
+        {groups.map((g) => (
+          <div key={g.key} className="space-y-2">
+            <div className="flex items-center gap-2 px-1">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: g.tone }} />
+              <h2 className="font-display text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: g.tone }}>
+                {g.title}
+              </h2>
+              <span className="text-[11px] font-medium text-muted-foreground">· {g.list.length}</span>
+              <div className="ml-2 h-px flex-1 bg-border" />
+            </div>
+            <div className="space-y-3">
+              {g.list.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  category={p.category_id ? categoryMap.get(p.category_id) : undefined}
+                  onEdit={() => onEdit(p)}
+                  onDelete={() => onDelete(p)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }

@@ -10,12 +10,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Camera, ImagePlus, Loader2, RefreshCw } from "lucide-react";
+import { Camera, ImagePlus, Loader2, RefreshCw, Sparkles, ScanSearch } from "lucide-react";
 import { Category, Product, useSaveProduct } from "@/lib/products";
-import { compressImageToDataUrl, fetchOpenFoodFacts } from "@/lib/image";
+import { compressImageToDataUrl } from "@/lib/image";
+import { lookupByBarcode, lookupByPhoto, type LookupSource } from "@/lib/product-lookup";
 import { toast } from "sonner";
 import { DateWheel } from "@/components/DateWheel";
 import { formatDateBR } from "@/lib/expiration";
+
+const SOURCE_LABEL: Record<LookupSource, string> = {
+  cache: "Cache local",
+  openfoodfacts: "OpenFoodFacts",
+  ai_text: "IA (código)",
+  ai_vision: "IA (foto do rótulo)",
+  none: "Manual",
+};
 
 type Props = {
   open: boolean;
@@ -34,7 +43,9 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
   const [quantity, setQuantity] = useState<string>("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
+  const [visioning, setVisioning] = useState(false);
   const [notFoundNotice, setNotFoundNotice] = useState(false);
+  const [source, setSource] = useState<LookupSource | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -46,33 +57,46 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
     setQuantity(initial?.quantity != null ? String(initial.quantity) : "");
     setPhoto(initial?.photo_url ?? null);
     setNotFoundNotice(false);
+    setSource(null);
 
     if (!initial?.id && initial?.barcode && !initial?.name) {
-      lookup(initial.barcode);
+      runBarcodeLookup(initial.barcode);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial?.id]);
 
-  async function lookup(code: string) {
+  async function runBarcodeLookup(code: string) {
     setLookingUp(true);
     setNotFoundNotice(false);
     try {
-      const r = await fetchOpenFoodFacts(code);
-      if (r.found) {
-        if (r.name) setName((prev) => prev || r.name!);
-        if (r.imageUrl) {
-          try {
-            const data = await compressImageToDataUrl(r.imageUrl);
-            setPhoto((prev) => prev || data);
-          } catch {
-            setPhoto((prev) => prev || r.imageUrl!);
-          }
-        }
+      const r = await lookupByBarcode(code);
+      if (r.name) {
+        setName((prev) => prev || r.name!);
+        if (r.imageDataUrl) setPhoto((prev) => prev || r.imageDataUrl);
+        setSource(r.source);
       } else {
         setNotFoundNotice(true);
+        setSource("none");
       }
     } finally {
       setLookingUp(false);
+    }
+  }
+
+  async function runVisionOnPhoto(dataUrl: string) {
+    setVisioning(true);
+    try {
+      const r = await lookupByPhoto(dataUrl);
+      if (r.name) {
+        setName((prev) => prev || r.name!);
+        setSource("ai_vision");
+        setNotFoundNotice(false);
+        toast.success("Nome identificado pelo rótulo");
+      } else {
+        toast.message("Rótulo ilegível — preencha manualmente.");
+      }
+    } finally {
+      setVisioning(false);
     }
   }
 
@@ -80,6 +104,10 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
     try {
       const data = await compressImageToDataUrl(file);
       setPhoto(data);
+      // Se ainda não temos nome, tenta identificar pelo rótulo automaticamente.
+      if (!name.trim()) {
+        runVisionOnPhoto(data);
+      }
     } catch {
       toast.error("Não foi possível processar a foto.");
     }
@@ -131,7 +159,7 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
                     <Camera className="h-7 w-7" />
                   </div>
                 )}
-                {lookingUp && (
+                {(lookingUp || visioning) && (
                   <div className="absolute inset-0 grid place-items-center bg-foreground/40">
                     <Loader2 className="h-5 w-5 animate-spin text-background" />
                   </div>
@@ -178,8 +206,43 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
             </div>
 
             {notFoundNotice && (
-              <div className="rounded-xl border border-border bg-surface-2/60 px-3 py-2 text-xs text-muted-foreground">
-                Produto não encontrado na base — preencha os dados manualmente.
+              <div className="rounded-2xl border border-primary/25 bg-[color-mix(in_oklab,var(--primary)_8%,white)] p-3 text-xs">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <div className="flex-1">
+                    <div className="font-display text-sm font-semibold text-foreground">
+                      Não achei esse código nas bases.
+                    </div>
+                    <div className="mt-0.5 text-muted-foreground">
+                      {photo
+                        ? "Posso ler o rótulo da foto enviada para preencher o nome."
+                        : "Tire ou envie uma foto da embalagem que eu leio o rótulo pra você."}
+                    </div>
+                    {photo && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 h-9 rounded-lg border-primary/40 text-primary hover:bg-primary/10"
+                        onClick={() => runVisionOnPhoto(photo)}
+                        disabled={visioning}
+                      >
+                        {visioning ? (
+                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ScanSearch className="mr-2 h-3.5 w-3.5" />
+                        )}
+                        Identificar pela foto
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {source && source !== "none" && name && (
+              <div className="-mt-2 text-[11px] text-muted-foreground">
+                Identificado por <span className="font-semibold text-foreground/80">{SOURCE_LABEL[source]}</span> — confira antes de salvar.
               </div>
             )}
 
@@ -209,7 +272,8 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
                     variant="outline"
                     size="icon"
                     className="h-12 w-12 rounded-xl"
-                    onClick={() => lookup(barcode)}
+                    onClick={() => runBarcodeLookup(barcode)}
+                    disabled={lookingUp}
                   >
                     {lookingUp ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                   </Button>
