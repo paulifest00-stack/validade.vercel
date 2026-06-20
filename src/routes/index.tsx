@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  FileUp,
   ScanLine,
   Search,
   Settings2,
@@ -18,7 +17,6 @@ import { ProductCard } from "@/components/ProductCard";
 import { ProductForm } from "@/components/ProductForm";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { CategoryManager } from "@/components/CategoryManager";
-import { ImportXLSXForm } from "@/components/ImportXLSXForm";
 import {
   Product,
   useCategories,
@@ -52,7 +50,6 @@ function Home() {
   const [formOpen, setFormOpen] = useState(false);
   const [formInitial, setFormInitial] = useState<Partial<Product> | null>(null);
   const [catOpen, setCatOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
 
   const categoryMap = useMemo(
     () => new Map((categories.data ?? []).map((c) => [c.id, c])),
@@ -114,22 +111,13 @@ function Home() {
           className="h-9 w-auto max-w-[60%] select-none object-contain object-left"
           draggable={false}
         />
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setImportOpen(true)}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
-            aria-label="Importar XLSX"
-          >
-            <FileUp className="h-4.5 w-4.5" />
-          </button>
-          <button
-            onClick={() => setCatOpen(true)}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
-            aria-label="Categorias"
-          >
-            <Settings2 className="h-4.5 w-4.5" />
-          </button>
-        </div>
+        <button
+          onClick={() => setCatOpen(true)}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
+          aria-label="Categorias"
+        >
+          <Settings2 className="h-4.5 w-4.5" />
+        </button>
       </header>
 
       {/* Compact stat row */}
@@ -275,11 +263,6 @@ function Home() {
         open={catOpen}
         onClose={() => setCatOpen(false)}
         categories={categories.data ?? []}
-      />
-      <ImportXLSXForm
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        defaultCategoryId={geralId || ""}
       />
     </div>
   );

@@ -13,14 +13,14 @@ import {
 import { Camera, ImagePlus, Loader2, RefreshCw, Sparkles, ScanSearch } from "lucide-react";
 import { Category, Product, useSaveProduct } from "@/lib/products";
 import { compressImageToDataUrl } from "@/lib/image";
-import { lookupByBarcode, lookupByPhoto, type LookupSource } from "@/lib/product-lookup";
+import { lookupByBarcode, lookupByPhoto, type LookupSource } from "@/lib/product-lookup-local";
 import { upsertCatalogEntry } from "@/lib/product-catalog";
 import { toast } from "sonner";
 import { DateWheel } from "@/components/DateWheel";
 import { formatDateBR } from "@/lib/expiration";
 
 const SOURCE_LABEL: Record<LookupSource, string> = {
-  catalog: "Catálogo permanente",
+  local_catalog: "Catálogo local",
   cache: "Cache local",
   openfoodfacts: "OpenFoodFacts",
   ai_text: "IA (código)",
@@ -132,10 +132,11 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
       photo_url: photo,
     });
 
-    // Também faz upsert no product_catalog se houver barcode válido
-    if (trimmedBarcode && /^\d+$/.test(trimmedBarcode)) {
-      await upsertCatalogEntry(trimmedBarcode, name.trim(), photo);
-    }
+    // Nota: O catálogo local (JSON) é atualizado manualmente via script
+    // Se quiser adicionar ao Supabase também, descomente:
+    // if (trimmedBarcode && /^\d+$/.test(trimmedBarcode)) {
+    //   await upsertCatalogEntry(trimmedBarcode, name.trim(), photo);
+    // }
 
     toast.success(initial?.id ? "Produto atualizado" : "Produto cadastrado");
     onClose();
