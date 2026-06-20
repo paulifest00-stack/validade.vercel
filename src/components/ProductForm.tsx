@@ -43,7 +43,9 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
   const [quantity, setQuantity] = useState<string>("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
+  const [visioning, setVisioning] = useState(false);
   const [notFoundNotice, setNotFoundNotice] = useState(false);
+  const [source, setSource] = useState<LookupSource | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -55,33 +57,46 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
     setQuantity(initial?.quantity != null ? String(initial.quantity) : "");
     setPhoto(initial?.photo_url ?? null);
     setNotFoundNotice(false);
+    setSource(null);
 
     if (!initial?.id && initial?.barcode && !initial?.name) {
-      lookup(initial.barcode);
+      runBarcodeLookup(initial.barcode);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial?.id]);
 
-  async function lookup(code: string) {
+  async function runBarcodeLookup(code: string) {
     setLookingUp(true);
     setNotFoundNotice(false);
     try {
-      const r = await fetchOpenFoodFacts(code);
-      if (r.found) {
-        if (r.name) setName((prev) => prev || r.name!);
-        if (r.imageUrl) {
-          try {
-            const data = await compressImageToDataUrl(r.imageUrl);
-            setPhoto((prev) => prev || data);
-          } catch {
-            setPhoto((prev) => prev || r.imageUrl!);
-          }
-        }
+      const r = await lookupByBarcode(code);
+      if (r.name) {
+        setName((prev) => prev || r.name!);
+        if (r.imageDataUrl) setPhoto((prev) => prev || r.imageDataUrl);
+        setSource(r.source);
       } else {
         setNotFoundNotice(true);
+        setSource("none");
       }
     } finally {
       setLookingUp(false);
+    }
+  }
+
+  async function runVisionOnPhoto(dataUrl: string) {
+    setVisioning(true);
+    try {
+      const r = await lookupByPhoto(dataUrl);
+      if (r.name) {
+        setName((prev) => prev || r.name!);
+        setSource("ai_vision");
+        setNotFoundNotice(false);
+        toast.success("Nome identificado pelo rótulo");
+      } else {
+        toast.message("Rótulo ilegível — preencha manualmente.");
+      }
+    } finally {
+      setVisioning(false);
     }
   }
 
@@ -89,6 +104,10 @@ export function ProductForm({ open, onClose, initial, categories, defaultCategor
     try {
       const data = await compressImageToDataUrl(file);
       setPhoto(data);
+      // Se ainda não temos nome, tenta identificar pelo rótulo automaticamente.
+      if (!name.trim()) {
+        runVisionOnPhoto(data);
+      }
     } catch {
       toast.error("Não foi possível processar a foto.");
     }
