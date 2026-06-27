@@ -88,7 +88,7 @@ export function BarcodeScanner({ open, onClose, onDetected, title }: Props) {
                 "codabar_reader",
                 "i2of5_reader",
               ],
-              multiple: false as any,
+              
               debug: {
                 showCanvas: false,
                 showPatternLabels: false,
