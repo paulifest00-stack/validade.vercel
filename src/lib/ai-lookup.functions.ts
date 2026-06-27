@@ -1,12 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+// Use OpenAI-compatible API (can be switched to any compatible provider)
+const AI_URL = process.env.OPENAI_API_BASE || "https://api.openai.com/v1";
+const AI_MODEL = process.env.AI_MODEL || "gpt-4o-mini";
 
 async function callAI(body: Record<string, unknown>) {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) throw new Error("LOVABLE_API_KEY ausente");
-  const res = await fetch(AI_URL, {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY ausente");
+  
+  const res = await fetch(`${AI_URL}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -14,16 +17,18 @@ async function callAI(body: Record<string, unknown>) {
     },
     body: JSON.stringify(body),
   });
+  
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`AI gateway ${res.status}: ${text.slice(0, 200)}`);
+    throw new Error(`AI API ${res.status}: ${text.slice(0, 200)}`);
   }
+  
   return (await res.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
   };
 }
 
-/** Tenta identificar o produto pelo EAN usando Gemini (texto). */
+/** Tenta identificar o produto pelo EAN usando OpenAI (texto). */
 export const aiLookupByBarcode = createServerFn({ method: "POST" })
   .inputValidator((data) =>
     z.object({ barcode: z.string().trim().min(4).max(32) }).parse(data),
@@ -31,7 +36,7 @@ export const aiLookupByBarcode = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const json = await callAI({
-        model: "google/gemini-2.5-flash",
+        model: AI_MODEL,
         messages: [
           {
             role: "system",
@@ -45,6 +50,7 @@ export const aiLookupByBarcode = createServerFn({ method: "POST" })
         ],
         response_format: { type: "json_object" },
       });
+      
       const raw = json.choices?.[0]?.message?.content ?? "{}";
       const parsed = JSON.parse(raw) as { name?: unknown };
       const name = typeof parsed.name === "string" ? parsed.name.trim() : "";
@@ -70,7 +76,7 @@ export const aiVisionReadLabel = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const json = await callAI({
-        model: "google/gemini-2.5-flash",
+        model: AI_MODEL,
         messages: [
           {
             role: "system",
@@ -89,8 +95,10 @@ export const aiVisionReadLabel = createServerFn({ method: "POST" })
           },
         ],
       });
+      
       const text = (json.choices?.[0]?.message?.content ?? "").trim();
       if (!text || /^ileg[íi]vel/i.test(text)) return { name: null as string | null };
+      
       // Sanitize: keep first line, remove surrounding quotes.
       const first = text.split("\n")[0].replace(/^["'`]+|["'`]+$/g, "").trim();
       return { name: first || null };

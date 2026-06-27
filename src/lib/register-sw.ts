@@ -1,29 +1,20 @@
-// Service worker registration, guarded against Lovable preview/dev contexts.
+// Service worker registration for production builds
 export function registerServiceWorker() {
   if (typeof window === "undefined") return;
   if (!("serviceWorker" in navigator)) return;
   if (!import.meta.env.PROD) return;
 
   try {
-    if (window.top !== window.self) return; // inside iframe (preview)
+    // Don't register if inside an iframe (preview/embedded context)
+    if (window.top !== window.self) return;
   } catch {
     return;
   }
 
-  const host = window.location.hostname;
   const url = new URL(window.location.href);
-  const isPreviewHost =
-    host.startsWith("id-preview--") ||
-    host.startsWith("preview--") ||
-    host === "lovableproject.com" ||
-    host.endsWith(".lovableproject.com") ||
-    host === "lovableproject-dev.com" ||
-    host.endsWith(".lovableproject-dev.com") ||
-    host === "beta.lovable.dev" ||
-    host.endsWith(".beta.lovable.dev");
   const killSwitch = url.searchParams.get("sw") === "off";
 
-  if (isPreviewHost || killSwitch) {
+  if (killSwitch) {
     navigator.serviceWorker.getRegistrations().then((regs) => {
       regs.forEach((r) => {
         if (r.active?.scriptURL?.endsWith("/sw.js")) r.unregister();

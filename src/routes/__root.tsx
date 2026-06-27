@@ -37,7 +37,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportLovableError(error, { boundary: "tanstack_root_error_component" }, { severity: "error" });
   }, [error]);
 
   return (
@@ -74,8 +74,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: "Paulifest Validade" },
       { property: "og:description", content: "Controle de validade de produtos da Paulifest." },
       { name: "twitter:description", content: "Controle de validade de produtos da Paulifest." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/71ba1fe2-51e5-4531-863b-024f72e64576/id-preview-9f0ba191--90d5dfb8-2572-46b6-bdf9-113026467ab4.lovable.app-1781825830643.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/71ba1fe2-51e5-4531-863b-024f72e64576/id-preview-9f0ba191--90d5dfb8-2572-46b6-bdf9-113026467ab4.lovable.app-1781825830643.png" },
+      { property: "og:image", content: "/paulifest-logo.png" },
+      { name: "twitter:image", content: "/paulifest-logo.png" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
     ],
