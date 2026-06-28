@@ -130,13 +130,47 @@ function Home() {
           className="h-9 w-auto max-w-[60%] select-none object-contain object-left"
           draggable={false}
         />
-        <button
-          onClick={() => setCatOpen(true)}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
-          aria-label="Categorias"
-        >
-          <Settings2 className="h-4.5 w-4.5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {notifPerm !== "unsupported" && (
+            <button
+              onClick={() => {
+                if (notifPerm === "granted") {
+                  toast.success("Notificações já ativadas");
+                } else if (notifPerm === "denied") {
+                  toast.error("Permissão bloqueada. Ative nas configurações do navegador.");
+                } else {
+                  requestNotif().then((r) => {
+                    if (r === "granted") toast.success("Notificações ativadas");
+                  });
+                }
+              }}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
+              aria-label="Notificações"
+              title={
+                notifPerm === "granted"
+                  ? "Notificações ativadas"
+                  : notifPerm === "denied"
+                    ? "Notificações bloqueadas"
+                    : "Ativar notificações"
+              }
+            >
+              {notifPerm === "granted" ? (
+                <Bell className="h-4.5 w-4.5 text-primary" />
+              ) : notifPerm === "denied" ? (
+                <BellOff className="h-4.5 w-4.5" />
+              ) : (
+                <Bell className="h-4.5 w-4.5" />
+              )}
+            </button>
+          )}
+          <button
+            onClick={() => setCatOpen(true)}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
+            aria-label="Categorias"
+          >
+            <Settings2 className="h-4.5 w-4.5" />
+          </button>
+        </div>
       </header>
 
       {/* Compact stat row */}
