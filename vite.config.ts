@@ -11,11 +11,17 @@ export default defineConfig({
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            charts: ["recharts"],
-            motion: ["framer-motion"],
-            excel: ["xlsx"],
-            scanner: ["@ericblade/quagga2", "html5-qrcode", "jsqr"],
+          manualChunks(id) {
+            if (id.includes("recharts")) return "charts";
+            if (id.includes("framer-motion")) return "motion";
+            if (id.includes("xlsx")) return "excel";
+            if (
+              id.includes("quagga2") ||
+              id.includes("html5-qrcode") ||
+              id.includes("jsqr")
+            ) {
+              return "scanner";
+            }
           },
         },
       },
