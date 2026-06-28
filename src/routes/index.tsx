@@ -59,18 +59,9 @@ function Home() {
   const categories = useCategories();
   const del = useDeleteProduct();
 
-  // Ping Supabase on load to prevent auto-pausing on free tier
-  useEffect(() => {
-    const pingSupabase = async () => {
-      try {
-        const { supabase } = await import("@/integrations/supabase/client");
-        await supabase.from("products").select("id").limit(1);
-      } catch (e) {
-        console.warn("Supabase keep-alive ping failed", e);
-      }
-    };
-    pingSupabase();
-  }, []);
+  // Notificações de produtos próximos do vencimento (no máx. 1x/dia)
+  const { permission: notifPerm, request: requestNotif } = useNotificationPermission();
+  useExpirationNotifications(products.data);
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
