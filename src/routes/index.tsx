@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
+  Bell,
+  BellOff,
   CheckCircle2,
   Clock,
   ScanLine,
@@ -14,9 +16,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/ProductCard";
-import { ProductForm } from "@/components/ProductForm";
-import { BarcodeScanner } from "@/components/BarcodeScanner";
-import { CategoryManager } from "@/components/CategoryManager";
 import {
   Product,
   useCategories,
@@ -24,7 +23,23 @@ import {
   useProducts,
 } from "@/lib/products";
 import { getStatus, statusMeta } from "@/lib/expiration";
+import {
+  useExpirationNotifications,
+  useNotificationPermission,
+} from "@/lib/notifications";
 import { toast } from "sonner";
+
+// Lazy-loaded: heavy bottom sheets / scanner (quagga2 ~hundreds of KB)
+const BarcodeScanner = lazy(() =>
+  import("@/components/BarcodeScanner").then((m) => ({ default: m.BarcodeScanner })),
+);
+const ProductForm = lazy(() =>
+  import("@/components/ProductForm").then((m) => ({ default: m.ProductForm })),
+);
+const CategoryManager = lazy(() =>
+  import("@/components/CategoryManager").then((m) => ({ default: m.CategoryManager })),
+);
+
 const LOGO_URL = "/paulifest-logo.png";
 
 export const Route = createFileRoute("/")({
@@ -44,18 +59,9 @@ function Home() {
   const categories = useCategories();
   const del = useDeleteProduct();
 
-  // Ping Supabase on load to prevent auto-pausing on free tier
-  useEffect(() => {
-    const pingSupabase = async () => {
-      try {
-        const { supabase } = await import("@/integrations/supabase/client");
-        await supabase.from("products").select("id").limit(1);
-      } catch (e) {
-        console.warn("Supabase keep-alive ping failed", e);
-      }
-    };
-    pingSupabase();
-  }, []);
+  // Notificações de produtos próximos do vencimento (no máx. 1x/dia)
+  const { permission: notifPerm, request: requestNotif } = useNotificationPermission();
+  useExpirationNotifications(products.data);
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -124,13 +130,47 @@ function Home() {
           className="h-9 w-auto max-w-[60%] select-none object-contain object-left"
           draggable={false}
         />
-        <button
-          onClick={() => setCatOpen(true)}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
-          aria-label="Categorias"
-        >
-          <Settings2 className="h-4.5 w-4.5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {notifPerm !== "unsupported" && (
+            <button
+              onClick={() => {
+                if (notifPerm === "granted") {
+                  toast.success("Notificações já ativadas");
+                } else if (notifPerm === "denied") {
+                  toast.error("Permissão bloqueada. Ative nas configurações do navegador.");
+                } else {
+                  requestNotif().then((r) => {
+                    if (r === "granted") toast.success("Notificações ativadas");
+                  });
+                }
+              }}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
+              aria-label="Notificações"
+              title={
+                notifPerm === "granted"
+                  ? "Notificações ativadas"
+                  : notifPerm === "denied"
+                    ? "Notificações bloqueadas"
+                    : "Ativar notificações"
+              }
+            >
+              {notifPerm === "granted" ? (
+                <Bell className="h-4.5 w-4.5 text-primary" />
+              ) : notifPerm === "denied" ? (
+                <BellOff className="h-4.5 w-4.5" />
+              ) : (
+                <Bell className="h-4.5 w-4.5" />
+              )}
+            </button>
+          )}
+          <button
+            onClick={() => setCatOpen(true)}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted-foreground shadow-[var(--shadow-press)] transition active:scale-95 hover:text-foreground"
+            aria-label="Categorias"
+          >
+            <Settings2 className="h-4.5 w-4.5" />
+          </button>
+        </div>
       </header>
 
       {/* Compact stat row */}
@@ -259,24 +299,32 @@ function Home() {
         </div>
       </div>
 
-      <BarcodeScanner
-        open={scanIntent !== null}
-        onClose={() => setScanIntent(null)}
-        onDetected={handleScanned}
-        title={scanIntent === "search" ? "Buscar por código" : "Escanear código de barras"}
-      />
-      <ProductForm
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        initial={formInitial}
-        categories={categories.data ?? []}
-        defaultCategoryId={geralId}
-      />
-      <CategoryManager
-        open={catOpen}
-        onClose={() => setCatOpen(false)}
-        categories={categories.data ?? []}
-      />
+      <Suspense fallback={null}>
+        {scanIntent !== null && (
+          <BarcodeScanner
+            open={scanIntent !== null}
+            onClose={() => setScanIntent(null)}
+            onDetected={handleScanned}
+            title={scanIntent === "search" ? "Buscar por código" : "Escanear código de barras"}
+          />
+        )}
+        {formOpen && (
+          <ProductForm
+            open={formOpen}
+            onClose={() => setFormOpen(false)}
+            initial={formInitial}
+            categories={categories.data ?? []}
+            defaultCategoryId={geralId}
+          />
+        )}
+        {catOpen && (
+          <CategoryManager
+            open={catOpen}
+            onClose={() => setCatOpen(false)}
+            categories={categories.data ?? []}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

@@ -30,7 +30,7 @@ async function callAI(body: Record<string, unknown>) {
 
 /** Tenta identificar o produto pelo EAN usando OpenAI (texto). */
 export const aiLookupByBarcode = createServerFn({ method: "POST" })
-  .validator((data) =>
+  .inputValidator((data: unknown) =>
     z.object({ barcode: z.string().trim().min(4).max(32) }).parse(data),
   )
   .handler(async ({ data }) => {
@@ -63,7 +63,7 @@ export const aiLookupByBarcode = createServerFn({ method: "POST" })
 
 /** Lê o rótulo da foto e devolve o nome comercial (último recurso). */
 export const aiVisionReadLabel = createServerFn({ method: "POST" })
-  .validator((data) =>
+  .inputValidator((data: unknown) =>
     z
       .object({
         imageDataUrl: z
