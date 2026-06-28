@@ -7,11 +7,6 @@
   "env": {
     "NODE_ENV": "production"
   },
-  "functions": {
-    "api/**": {
-      "maxDuration": 30
-    }
-  },
   "headers": [
     {
       "source": "/sw.js",
@@ -23,7 +18,7 @@
       ]
     },
     {
-     "source": "/api/:path*",
+      "source": "/api/:path*",
       "headers": [
         {
           "key": "Cache-Control",
