@@ -23,7 +23,7 @@
       ]
     },
     {
-      "source": "/api/**",
+     "source": "/api/:path*",
       "headers": [
         {
           "key": "Cache-Control",
