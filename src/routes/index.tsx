@@ -325,6 +325,7 @@ function Home() {
           />
         )}
       </Suspense>
+    </div>
   );
 }
 
